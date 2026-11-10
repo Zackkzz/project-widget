@@ -1,6 +1,4 @@
-# Sungrow Project creation widget
-
-React guided creation flow for the existing Zoho Creator `Project` form.
+# Project widget
 
 ```sh
 npm install
