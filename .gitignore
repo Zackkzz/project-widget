@@ -1,0 +1,33 @@
+# Dependencies and build output
+node_modules/
+dist/
+artifacts/
+*.tsbuildinfo
+
+# Test output
+coverage/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Local environment and HTTPS certificates
+.env
+.env.*
+!.env.example
+/cert.pem
+/key.pem
+
+# Local tool state
+/.impeccable/hook.cache.json
+/.impeccable/live/
+__pycache__/
+*.log
+.DS_Store
+
+# Zoho Creator exports
+deluge_scripts/
+*.ds
+
+docs/
+.codex/
+test-results/
