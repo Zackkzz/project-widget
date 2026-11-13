@@ -354,6 +354,7 @@ export function activityPayload(draft: ProjectDraft): Record<string, unknown> {
         const meta = rectification(row)!;
         Object.assign(data, {
           Rectification_ID: meta.parentId,
+          ...(meta.gspNumber !== undefined ? { GSP_Number: meta.gspNumber } : {}),
           Type_field: meta.type,
           Product_Line: meta.productLine.id,
         });

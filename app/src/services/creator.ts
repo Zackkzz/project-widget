@@ -9,6 +9,7 @@ import type {
 import type { LookupOption } from '../domain/types/lookup.types';
 import type { Errors } from '../domain/types/project.types';
 import { creatorDateTime } from '../domain/dates';
+import { loadRectificationPackages } from './rectificationPackages';
 
 export const SOURCES = {
   clients: { report: 'Clients', field: 'Business_Name' },
@@ -43,8 +44,7 @@ export const SOURCES = {
   rectifications: {
     report: 'Rectification_Project_Project_Report',
     field: 'Rectification_ID',
-    fields:
-      'Rectification_ID,Rectification_Project,Type_field,Product_Line,Fault,Software_Packages',
+    fields: 'Rectification_ID,Rectification_Project,Type_field,Product_Line,Fault,GSP_Number',
   },
 } as const;
 export const LOOKUP_PAGE_SIZE = 1000;
@@ -226,13 +226,14 @@ export function parseLookup(source: Source, value: unknown): LookupOption {
     if (
       !['Hardware', 'Software'].includes(String(row.Type_field)) ||
       !Object.hasOwn(row, 'Fault') ||
-      !Object.hasOwn(row, 'Software_Packages')
+      (row.Type_field === 'Software' && !Object.hasOwn(row, 'Software_Packages'))
     )
       throw new CreatorError(
         'The rectification report must expose its type, faults, and software packages.',
       );
     option.rectification = {
       parentId: related(row.Rectification_Project).id,
+      ...(Object.hasOwn(row, 'GSP_Number') ? { gspNumber: display(row.GSP_Number) } : {}),
       type: row.Type_field as 'Hardware' | 'Software',
       productLine: related(row.Product_Line),
       faults: Array.isArray(row.Fault) ? row.Fault.map(related) : [],
@@ -349,7 +350,7 @@ export async function connectCreator(sdkOverride?: CreatorSDK): Promise<Gateway>
       if (!serial.trim()) return null;
       const value = criteriaString(serial.trim());
       const rows = await records(
-        'Inverter_raw_data_Report',
+        'SN_raw_data_Report',
         'Product_Code,Model,Version',
         `(Serial_Number == ${value}) || (Linked_SN == ${value})`,
       );
@@ -361,7 +362,7 @@ export async function connectCreator(sdkOverride?: CreatorSDK): Promise<Gateway>
         !Object.hasOwn(raw, 'Version')
       )
         throw new CreatorError(
-          'The inverter raw data report must expose Product_Code, Model, and Version.',
+          'The SN raw data report must expose Product_Code, Model, and Version.',
         );
       const code = display(raw.Product_Code);
       const models = code
@@ -448,10 +449,19 @@ export async function connectCreator(sdkOverride?: CreatorSDK): Promise<Gateway>
         ...(clauses.length ? { criteria: clauses.map((c) => `(${c})`).join(' && ') } : {}),
         ...(cursor ? { record_cursor: cursor } : {}),
       });
+      const rows = page.rows.filter((row) => !hasBlankLookupLabel(source, row));
+      const hydrated =
+        source === 'rectifications'
+          ? await loadRectificationPackages(rows, async (ids) =>
+              records(
+                'Rectification_Projects',
+                'Software_Packages',
+                `(${ids.map((id) => `ID == ${id}`).join(' || ')})`,
+              ),
+            )
+          : rows;
       return {
-        options: page.rows
-          .filter((row) => !hasBlankLookupLabel(source, row))
-          .map((row) => parseLookup(source, row)),
+        options: hydrated.map((row) => parseLookup(source, row)),
         ...(page.cursor ? { cursor: page.cursor } : {}),
       };
     },

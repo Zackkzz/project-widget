@@ -2,6 +2,13 @@ import { execFileSync } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { build as buildRuntime } from 'esbuild';
+import { patchRecordCache } from './patch-record-cache.mjs';
+import { patchProjectWorkflow } from './patch-project-workflow.mjs';
+import { patchColumnSettings } from './patch-column-settings.mjs';
+import { patchClientDetailOrder } from './patch-client-detail-order.mjs';
+import { patchPoDisplay } from './patch-po-display.mjs';
+import { patchIssueDescription } from './patch-issue-description.mjs';
 
 // The November 9 build has the detail dialogs. The current source checkout predates them.
 const originalBundle = 'widget-DwtEDLVK.js';
@@ -21,6 +28,61 @@ function replaceOnce(before, after) {
 try {
   bundle = await readFile(join(build, 'app/assets', originalBundle), 'utf8');
 
+  // History remains in the fetched record but is not exposed as an editable BOM field.
+  replaceOnce(
+    'record:du,fields:dn?Ii:ef,sections:dn?kg:Fj',
+    'record:du,fields:dn?Ii.filter(field=>field.name!=="History"):ef,sections:dn?kg:Fj',
+  );
+
+  // Missing BOM display values use the shared blank-cell treatment; null stays distinct.
+  replaceOnce(
+    'An.fields.map(b=>r.jsx("td",{children:r.jsx(tu,{raw:y.raw[b.name]})},b.name))',
+    'An.fields.map(b=>r.jsx("td",{children:r.jsx(tu,{raw:y.raw[b.name]===void 0||typeof y.raw[b.name]==="string"&&!y.raw[b.name].trim()?"":y.raw[b.name]})},b.name))',
+  );
+  replaceOnce(
+    'title:Fe(S)||void 0,children:r.jsx(tu,{raw:S})',
+    'title:Fe(S)||void 0,children:r.jsx(tu,{raw:S===void 0||typeof S==="string"&&!S.trim()?"":S})',
+  );
+  const editorStart = bundle.indexOf('function Uj(');
+  const editorEnd = bundle.indexOf('const qj=', editorStart);
+  if (editorStart < 0 || editorEnd < 0) throw new Error('BOM editor boundaries did not match.');
+  const editor = bundle.slice(editorStart, editorEnd);
+  const emptyDisplay = 'r.jsx(Ca,{})';
+  if (editor.split(emptyDisplay).length - 1 !== 5)
+    throw new Error('BOM stack display placeholders did not match.');
+  bundle =
+    bundle.slice(0, editorStart) +
+    editor.replaceAll(emptyDisplay, 'r.jsx(tu,{raw:""})') +
+    bundle.slice(editorEnd);
+  replaceOnce(
+    'className:"button secondary small",disabled:c,onClick:()=>o(y),children:"Edit BOM item"',
+    'className:"button secondary small",style:{width:32,height:32,padding:0},disabled:c,"aria-label":"Edit BOM item","data-icon-label":"Edit BOM item",onClick:()=>o(y),children:r.jsx(Kp,{size:16,"aria-hidden":"true"})',
+  );
+
+  // Keep loading feedback inside the control it describes, rather than beside toolbar icons.
+  replaceOnce(
+    '"aria-label":"Saved project filters",value:(fe==null?void 0:fe.id)??(ee?"all":"current"),disabled:x,',
+    '"aria-label":"Saved project filters","aria-busy":y,value:y?"loading":(fe==null?void 0:fe.id)??(ee?"all":"current"),disabled:x||y,',
+  );
+  replaceOnce(
+    'children:[r.jsx("option",{value:"all",children:"All projects"}),!fe&&!ee',
+    'children:[y&&r.jsx("option",{value:"loading",children:"Loading saved filters…"}),r.jsx("option",{value:"all",children:"All projects"}),!fe&&!ee',
+  );
+  replaceOnce(
+    'y&&r.jsx("span",{className:"hint",role:"status",children:"Loading saved filters…"}),',
+    '',
+  );
+
+  // Closing with Escape still restores focus; submitting with Enter simply closes the panel.
+  replaceOnce(
+    'function w(){var D;y(!1),(D=_.current)==null||D.focus()}function T(D,L)',
+    'function w(restoreFocus=true){var D;y(!1),restoreFocus!==false&&((D=_.current)==null||D.focus())}function T(D,L)',
+  );
+  replaceOnce(
+    'function M(){if(b.criteria.some(D=>["empty","notEmpty"].includes(D.operator)?!1:!nb(D.field,D.value))){p("Enter a valid value for each condition, or remove the unused row.");return}o({...b,criteria:b.criteria.map(D=>({...D,value:D.value.trim()}))}),w()}',
+    'function M(restoreFocus=true){if(b.criteria.some(D=>["empty","notEmpty"].includes(D.operator)?!1:!nb(D.field,D.value))){p("Enter a valid value for each condition, or remove the unused row.");return}o({...b,criteria:b.criteria.map(D=>({...D,value:D.value.trim()}))}),w(restoreFocus)}',
+  );
+
   // Apply typed criteria with Enter while leaving dropdown selection and IME input intact.
   replaceOnce(
     'id:"project-filter-panel",className:"project-filter-panel","aria-label":"Project filters",children:',
@@ -32,7 +94,7 @@ try {
           !(event.target instanceof HTMLInputElement)) return;
       event.preventDefault();
       event.stopPropagation();
-      M();
+      M(false);
     },children:`,
   );
 
@@ -160,14 +222,51 @@ try {
     },[d]);async function mn()`,
   );
 
+  bundle = patchProjectWorkflow(bundle);
+  bundle = patchRecordCache(bundle);
+  bundle = patchColumnSettings(bundle);
+  bundle = patchClientDetailOrder(bundle);
+  bundle = patchPoDisplay(bundle);
+  bundle = patchIssueDescription(bundle);
   await cp(join(build, 'app'), join(scratch, 'app'), { recursive: true });
+  await buildRuntime({
+    entryPoints: [resolve('app/src/cache/projectCache.ts')],
+    outfile: join(scratch, 'app/assets/project-record-cache.js'),
+    bundle: true,
+    format: 'esm',
+    target: 'es2022',
+  });
   await cp(resolve('plugin-manifest.json'), join(scratch, 'plugin-manifest.json'));
+  const loadingStyles = `
+    .saved-filters > .app-select { width: 240px; max-width: 100%; }
+    .saved-filters [aria-busy="true"] { opacity: 1; color: var(--type-secondary); }
+    .editor-loading-status { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; color: var(--type-secondary); }
+  `;
+  await writeFile(
+    join(scratch, 'app/assets/widget-refinements.css'),
+    loadingStyles +
+      (await readFile(resolve('app/src/poDisplay.css'), 'utf8')) +
+      (await readFile(resolve('app/src/components/subforms/foldedText.css'), 'utf8')) +
+      (await readFile(resolve('app/src/cache/recovery.css'), 'utf8')) +
+      (await readFile(resolve('app/src/components/columns/columnSettings.css'), 'utf8')),
+  );
+  await cp(resolve('app/assets/conflict-recovery'), join(scratch, 'app/assets/conflict-recovery'), {
+    recursive: true,
+  });
+  await cp(resolve('app/assets/column-settings'), join(scratch, 'app/assets/column-settings'), {
+    recursive: true,
+  });
   await writeFile(join(scratch, 'app/assets', updatedBundle), bundle);
   await rm(join(scratch, 'app/assets', originalBundle));
   const entryPath = join(scratch, 'app/widget.html');
   const entry = await readFile(entryPath, 'utf8');
   if (!entry.includes(originalBundle)) throw new Error('The widget entry points to another build.');
-  await writeFile(entryPath, entry.replace(originalBundle, updatedBundle));
+  await writeFile(
+    entryPath,
+    entry
+      .replace(originalBundle, updatedBundle)
+      .replace('</head>', '<link rel="stylesheet" href="./assets/widget-refinements.css"></head>'),
+  );
 
   const archive = join(scratch, 'widget.zip');
   execFileSync('zip', ['-qr', archive, 'app', 'plugin-manifest.json'], { cwd: scratch });

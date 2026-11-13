@@ -15,6 +15,34 @@ function sdk() {
   };
 }
 describe('Creator adapter', () => {
+  it('looks up serial numbers in the current SN report and prefers Version over Model', async () => {
+    const mock = sdk();
+    mock.DATA.getRecords.mockResolvedValue({
+      code: 3000,
+      data: [{ Product_Code: '', Model: 'Old model', Version: 'Current version' }],
+    });
+    const gateway = await connectCreator(mock);
+    expect(await gateway.serialDetails(' SN-11 ')).toMatchObject({ model: 'Current version' });
+    expect(mock.DATA.getRecords.mock.calls[0][0]).toMatchObject({
+      report_name: 'SN_raw_data_Report',
+      criteria: '(Serial_Number == "SN-11") || (Linked_SN == "SN-11")',
+    });
+  });
+
+  it('reads hidden GSP metadata for hardware rectifications without requiring software packages', () => {
+    const option = parseLookup('rectifications', {
+      ID: '123',
+      Rectification_ID: 'RECT-11',
+      Type_field: 'Hardware',
+      Fault: [],
+      Rectification_Project: { ID: '124', zc_display_value: 'Parent' },
+      Product_Line: { ID: '125', zc_display_value: 'Storage' },
+      GSP_Number: 'GSP-11',
+    });
+    expect(option.rectification?.gspNumber).toBe('GSP-11');
+    expect(option.rectification?.packages).toEqual([]);
+  });
+
   it.each([
     ['managers', 'Name'],
     ['c4', 'C4_Number'],

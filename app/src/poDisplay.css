@@ -1,0 +1,13 @@
+/* End the PO display at its final row instead of leaving an empty row-sized band. */
+.po-display-section > .record-section-body {
+  padding-bottom: 0;
+}
+
+.po-display-section .detail-table-scroll {
+  margin-bottom: 0;
+}
+
+.po-display-section[open] + .record-section {
+  margin-top: 0;
+  border-top: 0;
+}

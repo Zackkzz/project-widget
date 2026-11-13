@@ -11,6 +11,7 @@ const reference: LookupOption = {
   label: 'RECT-1',
   rectification: {
     parentId: '100000000000000002',
+    gspNumber: 'GSP-2026-11',
     type: 'Software',
     productLine: { id: '100000000000000003', label: 'Storage' },
     faults: [{ id: '100000000000000004', label: 'Fault' }],
@@ -43,6 +44,7 @@ describe('Optional project activities', () => {
     expect(result).toMatchObject({
       Rectification_ID_Project: reference.id,
       Rectification_ID: reference.rectification!.parentId,
+      GSP_Number: 'GSP-2026-11',
       Product_Line: reference.rectification!.productLine.id,
       Fault: ['100000000000000004'],
       Changed_Software_Type: 'Master',

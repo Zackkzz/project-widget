@@ -27,7 +27,7 @@ test('SDK is listening before the embedded widget finishes loading', async ({ pa
         body: await readFile(`dist/app/assets/${name}`),
         contentType: name.endsWith('.js') ? 'application/javascript' : 'text/css',
       });
-    });
+    });``
   }
   await page.route('https://static.zohocdn.com/**/widgetsdk-min.js', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 100));

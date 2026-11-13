@@ -5,6 +5,7 @@ export interface LookupOption {
   states?: string[];
   rectification?: {
     parentId: string;
+    gspNumber?: string;
     type: 'Hardware' | 'Software';
     productLine: LookupOption;
     faults: LookupOption[];
