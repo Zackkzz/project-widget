@@ -4,6 +4,7 @@ import App from './App';
 import { loadCreatorSDK } from './services/creator';
 import type { ErrorBoundaryProps, ErrorBoundaryState } from './types/main.types';
 import './styles.css';
+import './focusOutlines.css';
 
 // React effects can run after iframe load, too late for Creator's registration message.
 // App handles connection errors; standalone localhost preview needs no SDK download.

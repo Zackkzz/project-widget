@@ -46,6 +46,10 @@ The earlier preserved Create bundle defined and serialized Utility activity rows
 
 The packaged widget also passed the visibility matrix for all five Project Type options in both Create and Edit with mocked Zoho data, including switching from Channel back to a type that shows the five activity subforms.
 
+## Project table column chooser
+
+The upload build restores the original Zoho chooser fields and consolidates State and `State_chosen` into one **State** entry. Saved `State_chosen` selections and positions are carried over to State. A column icon opens a searchable checklist for each of the 11 subforms. Selecting an individual subform field adds a separate project table column, independent of the summary column. Subform Apply keeps changes in the main chooser draft, and subform Cancel restores the draft from when that picker opened. Main Apply saves visibility and order. The preference codec marks explicit subform selections with `subcolumn:` and preserves the summary behavior of older saved preferences. Column cells use the current Project report response. A field that Zoho omits can still be selected but displays blank when its value is unavailable.
+
 ## Other workflow checks
 
 - Selecting a Site now fills the Site address into blank Internal Service Ticket addresses in the current draft. Existing addresses, including `Online`, stay selected and available. Edit updates only Address fields returned by the report. Changing Client still clears the selected Site.

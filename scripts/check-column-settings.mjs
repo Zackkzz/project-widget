@@ -8,6 +8,23 @@ export async function checkColumnSettings(page, widget) {
   await widget.getByRole('button', { name: 'Choose fields', exact: true }).click();
   const dialog = widget.getByRole('dialog', { name: 'Choose and arrange columns' });
   await dialog.waitFor();
+  assert.equal(await dialog.getByRole('checkbox', { name: 'Show State', exact: true }).count(), 1);
+  assert.equal(
+    await dialog.getByRole('checkbox', { name: 'Show State (selection)', exact: true }).count(),
+    0,
+  );
+  const dialogFocus = await dialog.evaluate((node) => {
+    node.focus();
+    return getComputedStyle(node).outlineStyle;
+  });
+  assert.equal(dialogFocus, 'none');
+  await dialog.getByRole('searchbox', { name: 'Search fields' }).press('Tab');
+  const controlFocus = await dialog.evaluate((node) => {
+    const active = node.ownerDocument.activeElement;
+    const style = getComputedStyle(active);
+    return [active.matches('button:focus-visible'), style.outlineStyle, style.outlineWidth];
+  });
+  assert.deepEqual(controlFocus, [true, 'solid', '1px']);
   assert.equal(await dialog.locator('.field-order-available').count(), 0);
   assert.equal(
     await dialog.getByRole('checkbox', { name: 'Show Project Name', exact: true }).isDisabled(),
@@ -47,6 +64,11 @@ export async function checkColumnSettings(page, widget) {
     clientY: previewBounds.y + 4 * 48 + 24,
   });
   const previewRow = dialog.locator('.column-setting-row').nth(1);
+  await dialog
+    .locator('.column-setting-row')
+    .nth(1)
+    .and(dialog.locator('[data-position="5"]'))
+    .waitFor();
   assert.equal(await previewRow.getAttribute('data-position'), '5');
   assert.equal(await previewRow.locator('.column-position').textContent(), '5');
   // Child dragleave and tiny movements across a row boundary must not reset/reverse the preview.
@@ -67,7 +89,9 @@ export async function checkColumnSettings(page, widget) {
   for (const width of [1280, 390]) {
     await page.setViewportSize({ width, height: 900 });
     await dialog.evaluate((node) =>
-      Promise.all(node.getAnimations({ subtree: true }).map((animation) => animation.finished)),
+      Promise.allSettled(
+        node.getAnimations({ subtree: true }).map((animation) => animation.finished),
+      ),
     );
     await dialog.screenshot({ path: join(tmpdir(), `widget-columns-preview-${width}.png`) });
   }
@@ -156,7 +180,60 @@ export async function checkColumnSettings(page, widget) {
   assert.equal(motion.previewing, false);
   assert.ok(motion.largestStep < 48, `Drop jumped ${motion.largestStep}px between frames.`);
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await widget.getByRole('button', { name: 'Choose fields', exact: true }).click();
+  const subformIcon = dialog.getByRole('button', {
+    name: 'Choose Rectification columns',
+    exact: true,
+  });
+  const projectField = dialog.getByRole('checkbox', { name: 'Show Project Notes', exact: true });
+  await projectField.check();
+  await subformIcon.scrollIntoViewIfNeeded();
+  const fieldsScroll = await scrollList.evaluate((node) => node.scrollTop);
+  assert.ok(fieldsScroll > 0);
+  const subformCount = subformIcon.locator('.column-subform-count');
+  assert.equal(await subformCount.count(), 0);
+  await subformIcon.click();
+  const subformDialog = widget.getByRole('dialog', { name: 'Rectification columns', exact: true });
+  const field = subformDialog.getByRole('checkbox', { name: 'Serial Number', exact: true });
+  await field.check();
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert.equal(
+      await subformDialog.evaluate((node) => node.scrollWidth <= node.clientWidth),
+      true,
+    );
+    await subformDialog.screenshot({ path: join(tmpdir(), `widget-subform-back-${width}.png`) });
+  }
+  await page.setViewportSize(originalViewport);
+  assert.equal(await subformDialog.getByRole('button', { name: 'Back to fields' }).count(), 0);
+  await subformDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  assert.equal(await subformCount.count(), 0);
+  assert.equal(await scrollList.evaluate((node) => node.scrollTop), fieldsScroll);
+  assert.equal(await subformIcon.evaluate((node) => document.activeElement === node), true);
+  assert.equal(await projectField.isChecked(), true);
+  await subformIcon.click();
+  assert.equal(await field.isChecked(), false);
+  await field.press('Escape');
+  assert.equal(await subformIcon.evaluate((node) => document.activeElement === node), true);
+  const serialColumn = widget.getByRole('button', {
+    name: 'Search Rectification · Serial Number',
+    exact: true,
+  });
+  await subformIcon.click();
+  await field.check();
+  await subformDialog.getByRole('button', { name: 'Apply', exact: true }).click();
+  await dialog.waitFor();
+  assert.equal(await serialColumn.count(), 0);
+  assert.equal(await subformCount.textContent(), '1');
+  assert.equal(await projectField.isChecked(), true);
+  assert.equal(await subformIcon.evaluate((node) => document.activeElement === node), true);
+  await subformIcon.click();
+  assert.equal(await field.isChecked(), true);
+  await subformDialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Apply', exact: true }).click();
+  await serialColumn.waitFor();
+  await widget.getByRole('button', { name: 'Search Project Notes', exact: true }).waitFor();
   console.log(
-    'Verified combined column selection, ordering, search, reset, cancel/apply, and desktop/mobile bounds.',
+    'Verified subform Apply stages changes, Cancel restores the parent draft, and main Apply updates the table.',
   );
 }

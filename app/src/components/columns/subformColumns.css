@@ -1,0 +1,95 @@
+.column-label-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.column-label-actions label {
+  flex: 1;
+}
+
+.column-subform-link {
+  flex: none;
+  width: auto;
+  min-width: 42px;
+  gap: 4px;
+  padding-inline: 5px;
+  color: var(--column-muted);
+}
+
+.column-subform-count {
+  min-width: 2ch;
+  font-size: 12px;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.column-subform-link[data-has-selection] {
+  color: #9e390e;
+  background: #fff2e9;
+}
+
+.column-subform-controls {
+  padding: 0 20px 6px;
+  flex-shrink: 0;
+}
+.column-subform-controls p {
+  margin: 0 0 12px;
+  color: var(--column-muted);
+  font-size: 13px;
+}
+
+.column-subform-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--column-line);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.column-settings .column-list-heading {
+  padding-block: 11px;
+  border-block: 1px solid var(--column-line);
+  font-weight: 600;
+}
+
+.column-selection-total {
+  font-variant-numeric: tabular-nums;
+}
+
+.column-subform-option:hover,
+.column-subform-option:focus-within {
+  background: #fafbfc;
+}
+.column-subform-option:has(input:checked) {
+  background: #fff7f1;
+}
+.column-subform-option input {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #b84308;
+}
+
+@media (max-width: 400px) {
+  .column-settings .column-setting-row {
+    grid-template-columns: 16px 16px 16px minmax(0, 1fr) 54px;
+    gap: 6px;
+  }
+  .column-settings .column-move-actions {
+    gap: 0;
+  }
+  .column-settings .column-settings-tools {
+    flex-wrap: wrap;
+    gap: 4px 12px;
+  }
+  .column-subform-controls,
+  .column-subform-option {
+    padding-inline: 16px;
+  }
+}

@@ -1,0 +1,42 @@
+/* Dialog borders mark the surface. Focus indicators belong to the controls inside it. */
+:where(dialog[open], dialog[open] :is(h1, h2, h3)[tabindex='-1']):focus {
+  outline: none;
+}
+
+:is(button, a, input, select, textarea, summary, [tabindex='0']):focus-visible {
+  outline: 1px solid var(--focus-outline, #596674);
+  outline-offset: 2px;
+}
+
+:is(.field-picker-panel, .record-editor, .saved-filters, .csv-export-dialog)
+  :is(button, input, select, textarea):focus-visible,
+.record-group-toggle:focus-visible,
+.export-subform-settings:focus-visible,
+.bom-details .bom-view-selector label:has(input:focus-visible),
+.bom-details .detail-table-scroll:focus-visible,
+.record-section > summary:focus-visible .subform-summary-trigger {
+  outline-width: 1px;
+}
+
+:is(.lookup-input, .choice-multi-control, .app-date-control):focus-within,
+.record-search div:focus-within,
+.app-select-trigger:focus {
+  outline: 1px solid var(--focus-outline, #596674);
+  outline-offset: 1px;
+}
+
+/* Composite inputs show the ring on the wrapper, with a local cue for keyboard actions. */
+.record-search input:focus-visible {
+  outline: none;
+}
+
+:is(.lookup-input, .choice-multi-control, .app-date-control) button:focus-visible {
+  text-decoration: underline;
+  outline: 1px solid var(--focus-outline, #596674);
+  outline-offset: -2px;
+}
+
+.issue-file-picker:has(input:focus-visible) {
+  outline: 1px solid var(--focus-outline, #596674);
+  outline-offset: 2px;
+}

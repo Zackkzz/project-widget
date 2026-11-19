@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createColumnSettings, reorderColumns } from '../app/src/components/columns/ColumnSettings';
 
@@ -40,7 +40,7 @@ beforeEach(() => {
   };
 });
 describe('Combined column settings', () => {
-  it('keeps the drag preview when native dragleave bubbles from a child icon', () => {
+  it('keeps the drag preview when native dragleave bubbles from a child icon', async () => {
     open();
     const handle = screen.getByRole('button', { name: 'Drag Client' });
     fireEvent.dragStart(handle, { dataTransfer: { setData: vi.fn() } });
@@ -49,7 +49,7 @@ describe('Combined column settings', () => {
     Object.defineProperties(over, { clientY: { value: 120 }, dataTransfer: { value: {} } });
     fireEvent(list, over);
     const row = handle.closest('.column-setting-row')!;
-    expect(row).toHaveAttribute('data-position', '3');
+    await waitFor(() => expect(row).toHaveAttribute('data-position', '3'));
     fireEvent.dragLeave(handle, { relatedTarget: null });
     expect(row).toHaveAttribute('data-position', '3');
   });

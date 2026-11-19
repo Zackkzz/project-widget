@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { patchProjectTypeVisibility } from './patch-project-type-visibility.mjs';
+import { patchExpandedProjectColumns } from './patch-expanded-project-columns.mjs';
 
 const [
   inputPath = 'artifacts/recovery/project-widget-r220-1c032eb.zip',
@@ -15,7 +16,9 @@ try {
   const contents = join(scratch, 'widget');
   execFileSync('unzip', ['-q', input, '-d', contents]);
   const bundle = join(contents, 'app/assets/widget-client-project-links.js');
-  const patched = patchProjectTypeVisibility(await readFile(bundle, 'utf8'));
+  const patched = patchExpandedProjectColumns(
+    patchProjectTypeVisibility(await readFile(bundle, 'utf8')),
+  );
   execFileSync(process.execPath, ['--input-type=module', '--check'], { input: patched });
   await writeFile(bundle, patched);
   const refinements = join(contents, 'app/assets/widget-refinements.css');
@@ -23,7 +26,18 @@ try {
     new URL('../app/src/components/bomDisplaySelector.css', import.meta.url),
     'utf8',
   );
-  await writeFile(refinements, `${await readFile(refinements, 'utf8')}\n${selectorStyles}`);
+  const subformStyles = await readFile(
+    new URL('../app/src/components/columns/subformColumns.css', import.meta.url),
+    'utf8',
+  );
+  const focusStyles = await readFile(
+    new URL('../app/src/focusOutlines.css', import.meta.url),
+    'utf8',
+  );
+  await writeFile(
+    refinements,
+    `${await readFile(refinements, 'utf8')}\n${selectorStyles}\n${subformStyles}\n${focusStyles}`,
+  );
   const candidate = join(scratch, 'candidate.zip');
   execFileSync('zip', ['-qr', candidate, 'app', 'plugin-manifest.json'], { cwd: contents });
   execFileSync('unzip', ['-tq', candidate]);
