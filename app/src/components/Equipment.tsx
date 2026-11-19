@@ -15,7 +15,13 @@ import {
   SERVICE_TYPES,
 } from '../domain/project';
 
-export function Equipment({ draft: d, errors, gateway, set }: FormProps) {
+export function Equipment({
+  draft: d,
+  errors,
+  gateway,
+  set,
+  showEstimate,
+}: FormProps & { showEstimate: boolean }) {
   const [addingRequest, setAddingRequest] = useState(false);
   const [requestError, setRequestError] = useState('');
   const latest = useRef(d);
@@ -169,7 +175,7 @@ export function Equipment({ draft: d, errors, gateway, set }: FormProps) {
             {!isChannel(d.Project_Type) && (
               <>
                 {text('EXW_Factory_Date', 'EXW factory date', 'date')}
-                {d.EXW_Factory_Date &&
+                {showEstimate &&
                   text(
                     'Estimated_Commission_Date',
                     'Estimated commission date',

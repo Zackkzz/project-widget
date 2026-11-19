@@ -45,6 +45,8 @@ export default function App({ initialGateway }: AppProps) {
   );
   const [connectionError, setConnectionError] = useState('');
   const [draft, setDraft] = useState(newDraft);
+  const [showEstimate, setShowEstimate] = useState(false);
+  const submissionDraft = showEstimate ? draft : { ...draft, Estimated_Commission_Date: '' };
   const [step, setStep] = useState(0);
   const [errors, setErrors] = useState<Errors>({});
   const [busy, setBusy] = useState(false);
@@ -82,6 +84,8 @@ export default function App({ initialGateway }: AppProps) {
   }, [dirty, created, previewComplete]);
   function set<K extends keyof ProjectDraft>(key: K, value: ProjectDraft[K]) {
     if (busy || uncertain) return;
+    if (key === 'Project_Type') setShowEstimate(!isChannel(String(value)));
+    if (key === 'EXW_Factory_Date') setShowEstimate(Boolean(value));
     setDraft((d) => updateDraft(d, key, value));
     setDirty(true);
     setErrors((old) =>
@@ -94,7 +98,7 @@ export default function App({ initialGateway }: AppProps) {
     if (busy || uncertain) return;
     if (target > step) {
       for (let n = 0; n < target; n++) {
-        const issues = validate(draft, n);
+        const issues = validate(submissionDraft, n);
         if (Object.keys(issues).length) {
           setStep(n);
           setErrors(issues);
@@ -112,10 +116,10 @@ export default function App({ initialGateway }: AppProps) {
   }
   async function submit() {
     if (!gateway || submitting.current || uncertain) return;
-    const issues = validate(draft);
+    const issues = validate(submissionDraft);
     if (Object.keys(issues).length) {
       setErrors(issues);
-      setStep([0, 1, 2].find((s) => Object.keys(validate(draft, s)).length) ?? 0);
+      setStep([0, 1, 2].find((s) => Object.keys(validate(submissionDraft, s)).length) ?? 0);
       focusHeading();
       return;
     }
@@ -137,7 +141,7 @@ export default function App({ initialGateway }: AppProps) {
           return;
         }
       }
-      const result = await gateway.create(toPayload(draft));
+      const result = await gateway.create(toPayload(submissionDraft));
       setCreated(result);
       setDirty(false);
     } catch (e) {
@@ -255,6 +259,7 @@ export default function App({ initialGateway }: AppProps) {
                   setCreated(null);
                   setPreviewComplete(false);
                   setDraft(newDraft());
+                  setShowEstimate(false);
                   setErrors({});
                   setStep(0);
                   setDirty(false);
@@ -587,9 +592,15 @@ export default function App({ initialGateway }: AppProps) {
                       </>
                     )}
                     {step === 2 && (
-                      <Equipment draft={draft} errors={errors} gateway={gateway} set={set} />
+                      <Equipment
+                        draft={draft}
+                        errors={errors}
+                        gateway={gateway}
+                        set={set}
+                        showEstimate={showEstimate}
+                      />
                     )}
-                    {step === 3 && <Review draft={draft} edit={go} />}
+                    {step === 3 && <Review draft={submissionDraft} edit={go} />}
                   </fieldset>
                   {submissionError && (
                     <div className="submission-error" role="alert">

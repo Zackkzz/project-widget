@@ -1,0 +1,71 @@
+.bom-view-selector.bom-view-selector--segmented {
+  display: block;
+  padding: 0;
+  margin-bottom: 12px;
+}
+
+.bom-view-selector--segmented legend {
+  margin-bottom: 6px;
+}
+
+.bom-view-segments {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  max-inline-size: 100%;
+  padding: 3px;
+  border: 1px solid #dbe0e8;
+  border-radius: 7px;
+  background: #eef0f4;
+}
+
+.bom-view-segments label {
+  position: relative;
+  cursor: pointer;
+}
+
+.bom-view-segments input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: 0;
+  opacity: 0;
+}
+
+.bom-view-segments span {
+  display: flex;
+  align-items: center;
+  min-block-size: 34px;
+  padding-inline: 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.bom-view-segments label:hover input:not(:checked) + span {
+  background: #e4e8ee;
+}
+
+.bom-view-segments input:checked + span {
+  border-color: #d3dae4;
+  background: #fff;
+  color: #9e390e;
+}
+
+.bom-view-segments input:focus-visible + span {
+  outline: 1px solid var(--focus-outline, #65717c);
+  outline-offset: 1px;
+}
+
+.bom-view-segments input:disabled + span {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (pointer: coarse) {
+  .bom-view-segments span { min-block-size: 44px; }
+}
+
+@media (forced-colors: active) {
+  .bom-view-segments input:checked + span { border-color: Highlight; color: Highlight; }
+}

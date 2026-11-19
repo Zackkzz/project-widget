@@ -56,6 +56,15 @@ describe('Optional project activities', () => {
     expect(row.values.Fault).toEqual([]);
     expect(row.values.Updated_Software_Version).toBe('');
   });
+  it('keeps the existing target version when a software type is cleared or unmatched', () => {
+    let row = changeActivity(newActivity(definition('Rectification')), 'Rectification_ID_Project', reference);
+    row = changeActivity(row, 'Changed_Software_Type', 'Master');
+    expect(row.values.Updated_Software_Version).toBe('2.0');
+    row = changeActivity(row, 'Changed_Software_Type', 'Unknown');
+    expect(row.values.Updated_Software_Version).toBe('2.0');
+    row = changeActivity(row, 'Changed_Software_Type', '');
+    expect(row.values.Updated_Software_Version).toBe('2.0');
+  });
   it('serializes issue rows with the native add-row marker and leaves identifiers to Creator', () => {
     const d = draft();
     const row = newActivity(definition('Issue_Register'));
@@ -80,7 +89,7 @@ describe('Optional project activities', () => {
       },
     ]);
   });
-  it('checks ticket date order, applies status on end-time input, and clears addresses on site/client changes', () => {
+  it('checks ticket date order, applies status on end-time input, and preserves entered addresses', () => {
     let d = draft();
     let row = newActivity(definition('Service_Tickets'));
     row = changeActivity(row, 'Aimed_End_Time', '2020-01-01T13:00');
@@ -98,7 +107,7 @@ describe('Optional project activities', () => {
     d.Service_Tickets = [row];
     expect(validate(d, 2)['Service_Tickets.0.Aimed_End_Time']).toMatch('End time');
     d = updateDraft(d, 'Client', { id: '3', label: 'Another client' });
-    expect(d.Service_Tickets[0].values.Address).toBe('');
+    expect(d.Service_Tickets[0].values.Address).toBe('Old site');
   });
   it('detects the native endpoint conflicts between unsaved pending tickets', () => {
     const d = draft();

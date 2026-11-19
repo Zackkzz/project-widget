@@ -67,6 +67,23 @@ describe('Project creation rules', () => {
     expect(updateDraft(d, 'Client', { id: '4', label: 'Other client' }).Site).toBeNull();
     expect(updateDraft(d, 'Country', { id: '5', label: 'New Zealand', states: [] }).State).toBe('');
   });
+  it('fills only blank service ticket addresses when a site is selected', () => {
+    const d = valid();
+    d.Service_Tickets = [
+      { key: 'blank', values: { Address: '' } },
+      { key: 'existing', values: { Address: 'Existing address' } },
+      { key: 'online', values: { Address: 'Online' } },
+    ];
+    const updated = updateDraft(d, 'Site', { id: '5', label: 'New site' });
+    expect(updated.Service_Tickets.map(({ values }) => values.Address)).toEqual([
+      'New site',
+      'Existing address',
+      'Online',
+    ]);
+    expect(
+      updateDraft(updated, 'Client', { id: '6', label: 'Other client' }).Service_Tickets,
+    ).toEqual(updated.Service_Tickets);
+  });
   it('clamps month-end estimates and respects leap years', () => {
     expect(addMonths('2026-10-31', 4)).toBe('2027-02-28');
     expect(addMonths('2023-10-31', 4)).toBe('2024-02-29');

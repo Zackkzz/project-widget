@@ -1,0 +1,54 @@
+# Projects widget handoff
+
+Updated 19 November 2026, Australia/Sydney.
+
+## Product
+
+The **Projects** page in Sungrow Service Australia serves the `project` widget in the [portal](https://portal.sungrowpower.com.au/#Page:Projects) and [Creator app](https://creatorapp.zoho.com/sungrowpower/sungrowauservice/#Page:Projects). It uses the signed-in Zoho Creator SDK session and reads `Project_Report`. Portal and Creator access can differ because the requests run under each session’s permissions.
+
+- **Projects workspace.** The table is the front door. It has filters, saved filters, column visibility and order, and exports. The toolbar’s **Create new project** action opens the create flow. **Project records** returns to the table. Row actions open detail or Edit Project.
+- **Related records and subforms.** The Client detail uses `Client_System`. Clients show projects matched by the Project’s Client lookup, sorted by project name. Links under Client and Project Manager open related project detail and expose view/edit actions. The full build contains the project subform tables and editors, including the built-in milestone editor with file and signature handling. BOM defaults to Stack View. Long Issue Descriptions fold using the same pattern as Warranty Ticket Items.
+- **Edit performance and recovery.** Hover can prefetch a project snapshot. Edit uses a cached snapshot to open quickly and fetches current project data in the background. Project rows are the first source for subforms, with separate calls for missing fields, missing file metadata and signature image content. An empty or missing embedded BOM still triggers the linked BOM query. Missing-field enrichment is briefly cached in memory. Signature downloads are deduplicated, and country data and permissions have their own caches. IndexedDB supports snapshots and draft recovery, including after a browser refresh. Save checks for newer data and lets the user choose how to resolve overlapping edits while preserving their draft.
+- **Zoho workflows.** Compare Create and Edit separately against the current Deluge rules. Creator owns submission validation and post-save side effects such as generated references and linked-record maintenance. Widget code handles form interactions and prepares the payload. Keep submission workflows enabled. Native load, input, and add-row handlers need separate parity checks. A Project payload can carry the Site lookup ID. Treat changes to fields on the linked Site record as a separate capability until verified. The conditional Site client backfill remains a parity item.
+
+## Current baseline
+
+| Item | State as of 19 November |
+| --- | --- |
+| Source reference | `1c032eba341d763305a9ceed4cffafbd47562f12` on `main` contains the IndexedDB runtime, bundle patches, and tests. `app/src/main.tsx` still mounts the older create-only React app. |
+| Full widget | Recovered revision `r220` from the browser’s cached static assets. Its `project-record-cache.js` matched a build from the reference commit byte for byte. The original full UI source and the November 9 base bundle were unavailable in the checkout. |
+| Excel export | The original lazy-loaded worker was missing. The recovered archive includes a replacement worker using ExcelJS. A browser test opened the generated workbook and checked its cell data. |
+| Verification | In local tests with a mocked Creator session, the table opened first, Create Project opened from the toolbar, and the back action returned to the table. The packaged browser checks passed for editor caching, draft restoration, conflicts, save/retry, column settings, filter keyboard behavior, and Issue Description folding. Live upload and portal verification remain pending for this recovered archive. |
+| Working tree | `app/src/domain/activities.ts` and `tests/activities.test.ts` contain an uncommitted rectification change. It preserves the existing target version when Changed Software Type is cleared or has no match. The change was outside the recovered release. |
+
+## Package or restore the full widget
+
+1. Use `artifacts/project-widget.zip` for the current upload. The dated local backup is `artifacts/recovery/project-widget-r220-1c032eb.zip`. Run `node scripts/package-project-type-visibility.mjs` to regenerate the latest full ZIP from that backup. Both archives are Git-ignored. Keep a copy of the verified ZIP outside the checkout if moving machines or creating a fresh clone.
+2. For a rollback, run `unzip -tq artifacts/recovery/project-widget-r220-1c032eb.zip` and copy the archive to `artifacts/project-widget.zip`. The 19 November recovery archive has SHA-256 `16b533174de61e17a88bb5821681dfb30770f70261aec2155fe09968ceb876d5`.
+3. For a code change to the full widget, first identify whether the affected code runs in the preserved UI bundle or in its patch/runtime modules. `scripts/package-client-project-links.mjs <base-build-directory>` expects the original November 9 `app/widget.html` and `app/assets/widget-DwtEDLVK.js`, plus the base build’s supporting assets. Use that script only when the original base is available. The recovered r220 bundle already contains the patches and is a release recovery input. Preserve the verified ZIP before writing a candidate.
+4. Check that the candidate has `app/widget.html`, `plugin-manifest.json`, `app/assets/widget-client-project-links.js`, `app/assets/project-record-cache.js`, styles and lazy dependencies. Test the ZIP with `unzip -tq`. Run `node scripts/test-record-cache.mjs` and `node scripts/check-issue-description.mjs` from the repository root. These tests read the upload ZIP. Smoke test the table → Create Project → table path and any feature touched by the change. The standard `npm run package` path gives a form-only page even when its build and archive checks pass.
+5. The ZIP stores the entry at `app/widget.html`. Zoho Creator’s current internal widget settings display `/widget.html` as the index, relative to the widget’s app root. After uploading, reload the Projects page and check that it lands on the table. Check one detail and edit path under the portal session before using live records for write tests.
+
+## Where to continue
+
+- Cache and draft recovery live under `app/src/cache/`. `scripts/patch-record-cache.mjs` and `scripts/patch-draft-recovery.mjs` connect them to the preserved UI. `app/src/services/subformHydration.ts` implements the missing-field rule.
+- `scripts/package-client-project-links.mjs` wires together the full-widget patches for related records, filtering, column settings, workflow alignment, and subform display. `app/src/domain/` and `app/src/services/creator.ts` cover the typed create form and its SDK adapter. Check whether changes to these modules are also wired into the full widget.
+- If available locally, `docs/project-workflow-audit-2026-11-12.md` has the Create/Edit comparison, and `docs/project-first-subforms.md` and `docs/editor-reference-cache.md` have cache details. `docs/` is Git-ignored. The September checkpoint and installation notes describe the older create form and may give a different packaging command.
+- The main maintenance gap is the missing source for the full workspace UI. Until it is recovered, retain verified release archives and record the baseline, changed behavior, and test evidence whenever the release changes.
+
+## Project Type visibility update
+
+The current upload adds `scripts/patch-project-type-visibility.mjs` on top of the recovered baseline. In Create and Edit, Channel and Direct Sales show Milestone Tracker and Service Requests. Other types show the shipping fields and the non-channel sections. Selecting a non-channel type shows Estimated Commission Date even if EXW is blank. Changing the EXW date afterward applies its own visibility rule. Edit retains its form-load defaults until the user changes the controlling field. The existing Edit milestone row must be saved or reset before changing to a type that hides it.
+
+In Create, the built-in milestone dialog stages the milestone and signature until the Project has an ID. The widget then uses the existing milestone SDK calls. A failure after Project creation is shown separately and a confirmed milestone ID is reused on retry. If Creator does not confirm whether a milestone was created, check the Milestones report before trying again. Live Zoho permissions and this write path still need portal verification.
+
+The earlier preserved Create bundle defined and serialized Utility activity rows but did not render them. The current patch mounts Warranty Tickets, Issue Register, Software Iteration, Rectification, and Internal Service Tickets for Utility and other types outside Channel and Direct Sales, including when each section is empty. The row dialogs reuse the existing field rules and validation. Switching types preserves draft rows and the existing serializer includes only rows for the active type. Local browser checks covered all five dialogs and adding, editing, and removing a warranty row across type switches.
+
+The packaged widget also passed the visibility matrix for all five Project Type options in both Create and Edit with mocked Zoho data, including switching from Channel back to a type that shows the five activity subforms.
+
+## Other workflow checks
+
+- Selecting a Site now fills the Site address into blank Internal Service Ticket addresses in the current draft. Existing addresses, including `Online`, stay selected and available. Edit updates only Address fields returned by the report. Changing Client still clears the selected Site.
+- Edit keeps a populated saved Status locked. When Status is editable and the user selects it, Shipping shows the corresponding planning date from the supplied Deluge mapping if the report exposes it. Installing and Commissioning were exercised in the packaged browser check. Shipping and Delivering are in the mapping but are absent from the current widget status choices. Edit shows Commission Complete Date from HP Testing and warranty dates from O&M.
+- Browser regression checks cover Create validation and payloads, country and client dependencies, BOM entry and batch import, activity editing and Service Requests, editor saving and retry, draft recovery and conflicts, and long Issue Description display. These use local fixtures or a mocked Creator SDK. Server-side IDs, linked-record writes, report permissions, and actual milestone uploads still need live Zoho verification.
+- The outstanding differences include C4 choices scoped to Client, C4-to-BOM import, and native-only add-row workflows for On-Site Service Record, Documents, Commissions, and Project Client Staff. Internal-ticket overlap checks run before submission. The widget preserves its explicit BOM batch import action and calculated Stack View. See the local workflow audit for the Deluge details.

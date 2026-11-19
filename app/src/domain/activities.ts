@@ -215,7 +215,16 @@ export function activityFields(
           options: [...new Set(rectification(row)?.packages.map((p) => p.type) ?? [])],
         };
       if (f.name === 'Address')
-        return { ...f, options: ['Online', ...(draft.Site ? [draft.Site.label] : [])] };
+        return {
+          ...f,
+          options: [
+            ...new Set(
+              ['Online', draft.Site?.label, row.values.Address].filter(
+                (value): value is string => typeof value === 'string' && value.length > 0,
+              ),
+            ),
+          ],
+        };
       return f;
     });
 }
@@ -248,9 +257,10 @@ export function changeActivity(row: ActivityRow, name: string, value: ActivityVa
     ])
       next.values[field] = '';
   }
-  if (name === 'Changed_Software_Type')
-    next.values.Updated_Software_Version =
-      rectification(next)?.packages.find((p) => p.type === value)?.version ?? '';
+  if (name === 'Changed_Software_Type' && value) {
+    const software = rectification(next)?.packages.find((p) => p.type === value);
+    if (software) next.values.Updated_Software_Version = software.version;
+  }
   if (name === 'Aimed_End_Time' && typeof value === 'string' && validDateTime(value))
     next.values.Status = value <= sydneyNow() ? 'Executed' : 'Pending';
   return next;

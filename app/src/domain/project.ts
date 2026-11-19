@@ -100,11 +100,11 @@ export function updateDraft<K extends keyof ProjectDraft>(
 ): ProjectDraft {
   const next = { ...draft, [key]: value };
   if (key === 'Client') next.Site = null;
-  if (key === 'Client' || key === 'Site') {
-    next.Service_Tickets = next.Service_Tickets.map((row) => ({
-      ...row,
-      values: { ...row.values, Address: row.values.Address === 'Online' ? 'Online' : '' },
-    }));
+  if (key === 'Site' && next.Site?.label) {
+    const address = next.Site.label;
+    next.Service_Tickets = next.Service_Tickets.map((row) =>
+      row.values.Address ? row : { ...row, values: { ...row.values, Address: address } },
+    );
   }
   if (key === 'BOM') {
     // Native BOM_Warranty_End_Date only extends the project end date; removal never shortens it.
@@ -161,7 +161,7 @@ export function validate(d: ProjectDraft, step?: number): Errors {
     if (!isChannel(d.Project_Type)) {
       Object.assign(errors, validateActivities(d));
       date('EXW_Factory_Date', d.EXW_Factory_Date);
-      if (d.EXW_Factory_Date) date('Estimated_Commission_Date', d.Estimated_Commission_Date);
+      date('Estimated_Commission_Date', d.Estimated_Commission_Date);
     }
     if (hasCommissionDate(d.Status)) date('Commission_Complete_Date', d.Commission_Complete_Date);
     if (hasWarranty(d.Status)) {
@@ -258,11 +258,9 @@ export function toPayload(d: ProjectDraft): Record<string, unknown> {
   if (!isChannel(d.Project_Type)) {
     put('Product_Line', d.Product_Line);
     put('BX_Code', d.BX_Code.trim());
-    if (d.EXW_Factory_Date) {
-      put('EXW_Factory_Date', creatorDate(d.EXW_Factory_Date));
-      if (d.Estimated_Commission_Date)
-        put('Estimated_Commission_Date', creatorDate(d.Estimated_Commission_Date));
-    }
+    if (d.EXW_Factory_Date) put('EXW_Factory_Date', creatorDate(d.EXW_Factory_Date));
+    if (d.Estimated_Commission_Date)
+      put('Estimated_Commission_Date', creatorDate(d.Estimated_Commission_Date));
   }
   if (hasCommissionDate(d.Status) && d.Commission_Complete_Date)
     put('Commission_Complete_Date', creatorDate(d.Commission_Complete_Date));
